@@ -38,10 +38,10 @@ class QNetwork():
         # On peut voir ça comme une matrice qui, à chaque entrée (parmis les h_size), associe une action (ici 4 actions).
         W = tf.Variable(tf.random_uniform([h_size,4],0,0.01))
 
-        # On calcul les probabilités de faire chaque action
+        # On calcul le gain de faire chaque action
         self.Qout = tf.matmul(self.flatConv4,W)
 
-        # L'action choisie est celle dont la probabilité est la plus grande
+        # L'action choisie est celle qui a le gain max la dimension 1 (dimension 0 étant le batch). Cette couche retourne l'index de l'emplacement max.
         self.predict = tf.argmax(self.Qout,1)
 
 

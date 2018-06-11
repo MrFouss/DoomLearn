@@ -1,0 +1,1 @@
+# On décrit ici une classe qui représente un réseau de neurones capable d'apprentissage renforcé sur Doom

@@ -11,6 +11,10 @@ class QNetwork():
     # h_size est la profondeur de la dernière couche de convolution
     def __init__(self, h_size):
 
+
+
+        #### Mise en place du réseau de neurone
+
         # On prend en entrée une frame du jeu de dimension 21168 (TODO prendre les vraies dimensions). Les valeurs sont sont sous forme séquentielle (1 dimension).
         # TODO essayer de remplacer None par 1 -> batck axis ?
         self.scalarInput =  tf.placeholder(shape=[None,21168], dtype=tf.float32)
@@ -46,29 +50,19 @@ class QNetwork():
 
 
 
-        #We take the output from the final convolutional layer and split it into separate advantage and value streams.
-        # self.streamAC,self.streamVC = tf.split(self.conv4,2,3)
-        # self.streamA = slim.flatten(self.streamAC)
-        # self.streamV = slim.flatten(self.streamVC)
-        # xavier_init = tf.contrib.layers.xavier_initializer()
-        # self.AW = tf.Variable(xavier_init([h_size//2,env.actions]))
-        # self.VW = tf.Variable(xavier_init([h_size//2,1]))
-        # self.Advantage = tf.matmul(self.streamA,self.AW)
-        # self.Value = tf.matmul(self.streamV,self.VW)
-        
-        #Then combine them together to get our final Q-values.
-        # self.Qout = self.Value + tf.subtract(self.Advantage,tf.reduce_mean(self.Advantage,axis=1,keep_dims=True))
-        # self.predict = tf.argmax(self.Qout,1)
-        
-        # TODO réécrire et commenter ce qui suit
-        #Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
-        # self.targetQ = tf.placeholder(shape=[None],dtype=tf.float32)
-        # self.actions = tf.placeholder(shape=[None],dtype=tf.int32)
-        # self.actions_onehot = tf.one_hot(self.actions,env.actions,dtype=tf.float32)
-        
-        # self.Q = tf.reduce_sum(tf.multiply(self.Qout, self.actions_onehot), axis=1)
-        
-        # self.td_error = tf.square(self.targetQ - self.Q)
-        # self.loss = tf.reduce_mean(self.td_error)
-        # self.trainer = tf.train.AdamOptimizer(learning_rate=0.0001)
-        # self.updateModel = self.trainer.minimize(self.loss)
+        #### Mise en place de la partie d'apprentissage du réseau de neurone
+
+        # TODO remplacer la taille par le bon nombre d'actions
+        # On envoi en entrée les valeurs de Qout mises à jour (à partir de la récompense obtenu de l'environnement). En somme, on essaye de tendre vers les estimations de récompense (Qout) les plus justes pour toutes les actions.
+        self.nextQ = tf.placeholder(shape=[1, 4],dtype=tf.float32)
+
+        # On calcul l'erreur au carré entre Qout et nextQ (estimé vs. mesuré)
+        self.loss = tf.reduce_sum(tf.square(self.nextQ - self.Qout))
+
+        # C'est le module de méthode d'apprentissage, ici un gradient descend
+        # TODO voire aussi AdamOptimizer
+        self.trainer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
+
+        # On définit l'objectif de l'apprentissage. Ici, on veut réduire l'ecart entre Qout (estimé) nextQ (mesuré).
+        # c'est ce module que l'on calcule quand on veut effectuer une propagation arrière dans tout le réseau de neurone
+        self.updateModel = self.trainer.minimize(self.loss)

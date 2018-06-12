@@ -9,8 +9,12 @@ import tensorflow.contrib.slim as slim
 class QNetwork():
 
     # h_size est la profondeur de la dernière couche de convolution
-    def __init__(self, h_size):
+    def __init__(self, h_size, randActionProba, y):
 
+        #### Champs de classe
+
+        self.randActionProba = randActionProba
+        self.y = y
 
 
         #### Mise en place du réseau de neurone
@@ -40,10 +44,10 @@ class QNetwork():
 
         # Couche complètement connectée avec des poids. Elle est initialisée aléatoirement (TODO voire initialisation de Xavier). TODO utiliser le vrai nombre de sorties (i.e. le nombre d'actions possibles)
         # On peut voir ça comme une matrice qui, à chaque entrée (parmis les h_size), associe une action (ici 4 actions).
-        W = tf.Variable(tf.random_uniform([h_size,4],0,0.01))
+        self.W = tf.Variable(tf.random_uniform([h_size,4],0,0.01))
 
         # On calcul le gain de faire chaque action
-        self.Qout = tf.matmul(self.flatConv4,W)
+        self.Qout = tf.matmul(self.flatConv4,self.W)
 
         # L'action choisie est celle qui a le gain max la dimension 1 (dimension 0 étant le batch). Cette couche retourne l'index de l'emplacement max.
         self.predict = tf.argmax(self.Qout,1)
@@ -66,3 +70,33 @@ class QNetwork():
         # On définit l'objectif de l'apprentissage. Ici, on veut réduire l'ecart entre Qout (estimé) nextQ (mesuré).
         # c'est ce module que l'on calcule quand on veut effectuer une propagation arrière dans tout le réseau de neurone
         self.updateModel = self.trainer.minimize(self.loss)
+
+
+    def train_network(self, env):
+
+        # TODO décommenter avec les fonctions de l'environnement
+        pass
+
+        # Calculer l'action choisie (a) et les récompenses évaluées (allQ) en envoyant en entrée une frame de jeu
+        # a,allQ = sess.run([self.predict,self.Qout],feed_dict={self.scalarInput:inputFrame)
+
+        # On a une petite probabilité de choisir une action aléatoire afin d'explorer les possibilités d'action
+        # if np.random.rand(1) < self.randActionProba:
+            # TODO extraire une action aléatoire de l'environnement
+            # a[0] = env.action_space.sample()
+        
+        # Faire l'action choisie et récupérer la récompense
+        # r = env.step(a[0])
+
+        # Calculer les récompenses évaluées (Q1) en envoyant en entrée la frame suivante du jeu après avoir effectué l'action choisie
+        # Q1 = sess.run(Qout,feed_dict={self.scalarInput:nextInputFrame)
+
+        # On calcule ici les récompenses mises à jour (targetQ) comme suit :
+        # targetQ = r + y*maxQ1 (la récompense de l'action + y * la plus grande récompense estimée à la frame suivant)
+        # En un sens, on optimise les décisions d'action avec un coup d'avance
+        # maxQ1 = np.max(Q1)
+        # targetQ = allQ
+        # targetQ[0,a[0]] = r + y*maxQ1
+
+        # Enfin, on met à jour le réseau à partir de l'erreur entre récompense mesurée et récompense obtenue
+        #_,W1 = sess.run([self.updateModel,self.W],feed_dict={self.scalarInput:inputFrame,self.nextQ:targetQ})

@@ -105,3 +105,5 @@ venv.bak/
 
 # visual code
 .vscode/
+
+_vizdoom.ini

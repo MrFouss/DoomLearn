@@ -187,7 +187,7 @@ def initialize_vizdoom(config_file_path):
     print("Initializing doom...")
     game = DoomGame()
     game.load_config(config_file_path)
-    game.set_window_visible(False)
+    game.set_window_visible(True)
     game.set_mode(Mode.PLAYER)
     game.set_screen_format(ScreenFormat.GRAY8)
     game.set_screen_resolution(ScreenResolution.RES_640X480)

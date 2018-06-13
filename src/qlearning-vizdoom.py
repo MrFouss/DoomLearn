@@ -30,10 +30,10 @@ frame_repeat = 12
 resolution = (30, 45)
 episodes_to_watch = 10
 
-model_savefile = "/tmp/model.ckpt"
+model_savefile = "scenarios/model/model.ckpt"
 save_model = True
-load_model = False
-skip_learning = False
+load_model = True
+skip_learning = True
 # Configuration file path
 config_file_path = "scenarios/simpler_basic.cfg"
 

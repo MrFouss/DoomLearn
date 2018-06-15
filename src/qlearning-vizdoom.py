@@ -10,12 +10,14 @@ import numpy as np
 import skimage.color, skimage.transform
 import tensorflow as tf
 from tqdm import trange
+import time as tm
+import os
 
 # Q-learning settings
 learning_rate = 0.00025
 # learning_rate = 0.0001
 discount_factor = 0.99
-epochs = 10
+epochs = 20
 learning_steps_per_epoch = 2000
 replay_memory_size = 10000
 
@@ -28,6 +30,7 @@ test_episodes_per_epoch = 100
 # Other parameters
 frame_repeat = 12
 resolution = (30, 45)
+screen_channels = 1
 episodes_to_watch = 10
 
 save_model = True
@@ -35,21 +38,38 @@ load_model = False
 skip_learning = False
 
 # Configuration file path
-config_file = "basic"
+config_file = "simpler_basic"
 config_file_path = "scenarios/" + config_file + ".cfg"
-model_savefile = "model/model_" + config_file + ".ckpt"
+
+# savefile paths
+save_dir = "trainings/training_" + config_file + "_" + tm.asctime( tm.localtime(tm.time()) )
+model_savefile = save_dir + "/model_" + config_file + ".ckpt"
+tensorboard_savefile = save_dir
+parameters_savefile = save_dir + "/parameters_" + config_file + ".txt"
+
+# Save simulation parameters
+def save_simulation_parameters():
+    os.makedirs(os.path.dirname(parameters_savefile), exist_ok=True)
+    with open(parameters_savefile, 'w') as file:
+        file.write('learning rate=' + str(learning_rate) + '\n')
+        file.write('discount factor=' + str(discount_factor) + '\n')
+        file.write('epochs=' + str(epochs) + '\n')
+        file.write('learning steps per epoch=' + str(learning_steps_per_epoch) + '\n')
+        file.write('test episodes  per epoch=' + str(test_episodes_per_epoch) + '\n')
+        file.write('frame repeat=' + str(frame_repeat) + '\n')
+        file.write('resolution=' + str(resolution) + '\n')
+        file.write('screen channels=' + str(screen_channels) + '\n')
 
 # Converts and down-samples the input image
 def preprocess(img):
-    img = skimage.transform.resize(img, resolution)
+    img = skimage.transform.resize(img, list(resolution) + [screen_channels])
     img = img.astype(np.float32)
     return img
 
 
 class ReplayMemory:
     def __init__(self, capacity):
-        channels = 1
-        state_shape = (capacity, resolution[0], resolution[1], channels)
+        state_shape = (capacity, resolution[0], resolution[1], screen_channels)
         self.s1 = np.zeros(state_shape, dtype=np.float32)
         self.s2 = np.zeros(state_shape, dtype=np.float32)
         self.a = np.zeros(capacity, dtype=np.int32)
@@ -61,10 +81,10 @@ class ReplayMemory:
         self.pos = 0
 
     def add_transition(self, s1, action, s2, isterminal, reward):
-        self.s1[self.pos, :, :, 0] = s1
+        self.s1[self.pos, :, :, :] = s1
         self.a[self.pos] = action
         if not isterminal:
-            self.s2[self.pos, :, :, 0] = s2
+            self.s2[self.pos, :, :, :] = s2
         self.isterminal[self.pos] = isterminal
         self.r[self.pos] = reward
 
@@ -78,7 +98,7 @@ class ReplayMemory:
 
 def create_network(session, available_actions_count):
     # Create the input variables
-    s1_ = tf.placeholder(tf.float32, [None] + list(resolution) + [1], name="State")
+    s1_ = tf.placeholder(tf.float32, [None] + list(resolution) + [screen_channels], name="State")
     a_ = tf.placeholder(tf.int32, [None], name="Action")
     target_q_ = tf.placeholder(tf.float32, [None, available_actions_count], name="TargetQ")
 
@@ -121,7 +141,7 @@ def create_network(session, available_actions_count):
         return session.run(best_a, feed_dict={s1_: state})
 
     def function_simple_get_best_action(state):
-        return function_get_best_action(state.reshape([1, resolution[0], resolution[1], 1]))[0]
+        return function_get_best_action(state.reshape([1, resolution[0], resolution[1], screen_channels]))[0]
 
     return function_learn, function_get_q_values, function_simple_get_best_action
 
@@ -197,6 +217,9 @@ def initialize_vizdoom(config_file_path):
 
 
 if __name__ == '__main__':
+    # Save parameters of training
+    save_simulation_parameters()
+
     # Create Doom instance
     game = initialize_vizdoom(config_file_path)
 
@@ -223,7 +246,7 @@ if __name__ == '__main__':
     train_steps_since_start = 0
     train_episodes_since_start = 0
     merged = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter('tensorboard/train', session.graph)
+    train_writer = tf.summary.FileWriter(tensorboard_savefile, session.graph)
 
     time_start = time()
     if not skip_learning:

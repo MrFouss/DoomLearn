@@ -35,7 +35,7 @@ load_model = False
 skip_learning = False
 
 # Configuration file path
-config_file = "defend_the_line"
+config_file = "basic"
 config_file_path = "scenarios/" + config_file + ".cfg"
 model_savefile = "model/model_" + config_file + ".ckpt"
 
@@ -102,6 +102,7 @@ def create_network(session, available_actions_count):
     best_a = tf.argmax(q, 1)
 
     loss = tf.losses.mean_squared_error(q, target_q_)
+    tf.summary.scalar('loss', loss)
 
     optimizer = tf.train.RMSPropOptimizer(learning_rate)
     # Update the parameters according to the computed gradient using RMSProp.
@@ -109,7 +110,8 @@ def create_network(session, available_actions_count):
 
     def function_learn(s1, target_q):
         feed_dict = {s1_: s1, target_q_: target_q}
-        l, _ = session.run([loss, train_step], feed_dict=feed_dict)
+        l, _, m = session.run([loss, train_step, merged], feed_dict=feed_dict)
+        train_writer.add_summary(m, train_steps_since_start)
         return l
 
     def function_get_q_values(state):
@@ -216,6 +218,13 @@ if __name__ == '__main__':
         session.run(init)
     print("Starting the training!")
 
+    # tensor board init
+    scoreSummary = tf.Summary(value=[tf.Summary.Value(tag="score", simple_value=0)])
+    train_steps_since_start = 0
+    train_episodes_since_start = 0
+    merged = tf.summary.merge_all()
+    train_writer = tf.summary.FileWriter('tensorboard/train', session.graph)
+
     time_start = time()
     if not skip_learning:
         for epoch in range(epochs):
@@ -227,11 +236,15 @@ if __name__ == '__main__':
             game.new_episode()
             for learning_step in trange(learning_steps_per_epoch, leave=False):
                 perform_learning_step(epoch)
+                train_steps_since_start += 1
                 if game.is_episode_finished():
                     score = game.get_total_reward()
+                    scoreSummary.value[0].simple_value = score
+                    train_writer.add_summary(scoreSummary, train_episodes_since_start)
                     train_scores.append(score)
                     game.new_episode()
                     train_episodes_finished += 1
+                    train_episodes_since_start += 1
 
             print("%d training episodes played." % train_episodes_finished)
 

@@ -38,7 +38,7 @@ load_model = False
 skip_learning = False
 
 # Configuration file path
-config_file = "simpler_basic"
+config_file = "basic"
 config_file_path = "scenarios/" + config_file + ".cfg"
 
 # savefile paths

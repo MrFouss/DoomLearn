@@ -318,9 +318,6 @@ if __name__ == '__main__':
     # file writer
     train_writer = tf.summary.FileWriter(tensorboard_savefile, session.graph)
 
-    print(game.get_state().screen_buffer.shape)
-    print(preprocess(game.get_state().screen_buffer).shape)
-
     time_start = time()
     if not skip_learning:
         for epoch in range(epochs):

@@ -35,7 +35,7 @@ episodes_to_watch = 10
 
 save_model = True
 load_model = False
-skip_learning = True
+skip_learning = False
 
 # Configuration file path
 config_file = "basic"
@@ -60,6 +60,7 @@ def save_simulation_parameters():
         file.write('resolution=' + str(resolution) + '\n')
         file.write('screen channels=' + str(screen_channels) + '\n')
         file.write('optimizer=' + str(optimizer.get_name()) + '\n')
+        file.write('batch size=' + str(batch_size) + '\n')
         file.write('\n------------VIZDOOM CONFIG FILE------------\n\n')
         with open(config_file_path, 'r') as configFile:
             lines = configFile.readlines()

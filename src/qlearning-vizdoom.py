@@ -29,7 +29,7 @@ test_episodes_per_epoch = 100
 
 # Other parameters
 frame_repeat = 12
-resolution = (60, 80)
+resolution = (30, 40)
 screen_channels = 3
 episodes_to_watch = 10
 
@@ -67,13 +67,13 @@ def save_simulation_parameters():
 
 # Converts and down-samples the input image
 def preprocess(img):
-    img = skimage.transform.resize(img, list(resolution) + [screen_channels])
+    img = skimage.transform.resize(img, [screen_channels] + list(resolution))
     img = img.astype(np.float32)
     return img
 
 class ReplayMemory:
     def __init__(self, capacity):
-        state_shape = (capacity, resolution[0], resolution[1], screen_channels)
+        state_shape = (capacity, screen_channels, resolution[0], resolution[1])
         self.s1 = np.zeros(state_shape, dtype=np.float32)
         self.s2 = np.zeros(state_shape, dtype=np.float32)
         self.a = np.zeros(capacity, dtype=np.int32)
@@ -114,7 +114,7 @@ def variable_summaries(tensor):
 
 def create_network(session, available_actions_count):
     # Create the input variables
-    s1_ = tf.placeholder(tf.float32, [None] + list(resolution) + [screen_channels], name="State")
+    s1_ = tf.placeholder(tf.float32, [None] + [screen_channels] + list(resolution), name="State")
     a_ = tf.placeholder(tf.int32, [None], name="Action")
     target_q_ = tf.placeholder(tf.float32, [None, available_actions_count], name="TargetQ")
 
@@ -203,7 +203,7 @@ def create_network(session, available_actions_count):
         return session.run(best_a, feed_dict={s1_: state})
 
     def function_simple_get_best_action(state):
-        return function_get_best_action(state.reshape([1, resolution[0], resolution[1], screen_channels]))[0]
+        return function_get_best_action(state.reshape([1, screen_channels, resolution[0], resolution[1]]))[0]
 
     return function_learn, function_get_q_values, function_simple_get_best_action, optimizer
 

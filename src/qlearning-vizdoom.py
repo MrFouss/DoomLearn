@@ -17,7 +17,7 @@ import os
 learning_rate = 0.00025
 # learning_rate = 0.0001
 discount_factor = 0.99
-epochs = 20
+epochs = 50
 learning_steps_per_epoch = 2000
 replay_memory_size = 10000
 
@@ -28,8 +28,8 @@ batch_size = 64
 test_episodes_per_epoch = 100
 
 # Other parameters
-frame_repeat = 12
-resolution = (30, 40)
+frame_repeat = 6
+resolution = (30, 45)
 screen_channels = 3
 episodes_to_watch = 10
 
@@ -38,11 +38,12 @@ load_model = False
 skip_learning = False
 
 # Configuration file path
-config_file = "basic"
+config_file = "health_gathering"
 config_file_path = "scenarios/" + config_file + ".cfg"
 
 # savefile paths
-save_dir = "trainings/training_" + config_file + "_" + tm.asctime( tm.localtime(tm.time()) )
+save_dir = "trainings/done/training_" + config_file + "_" + tm.asctime( tm.localtime(tm.time()) )
+# save_dir = "/home/esia/Documents/doom-learn/DoomLearn/trainings/done/training_basic_Sat Jun 16 18:13:43 2018"
 model_savefile = save_dir + "/model_" + config_file + ".ckpt"
 tensorboard_savefile = save_dir
 parameters_savefile = save_dir + "/parameters_" + config_file + ".txt"
@@ -303,32 +304,36 @@ if __name__ == '__main__':
         session.run(init)
     print("Starting the training!")
 
-    # Save parameters of training
-    save_simulation_parameters()
-
-    # score summaries
-    trainScoreSummary = tf.Summary(value=[tf.Summary.Value(tag="score/training value", simple_value=0)])
-    testScoreSummary = tf.Summary(value=[tf.Summary.Value(tag="score/test value", simple_value=0)])
-    explorationRateSummary = tf.Summary(value=[tf.Summary.Value(tag="exploration rate/value", simple_value=0)])
-    trainOrTestSummary = tf.Summary(value=[tf.Summary.Value(tag="process/train(1) or test(-1)", simple_value=0)])
-    train_steps_since_start = 0
-
-    # tensor board summary merge
-    merged = tf.summary.merge_all()
-
-    # file writer
-    train_writer = tf.summary.FileWriter(tensorboard_savefile, session.graph)
-
     time_start = time()
     if not skip_learning:
+        # Save parameters of training
+        save_simulation_parameters()
+
+        # score summaries
+        trainScoreSummary = tf.Summary(value=[tf.Summary.Value(tag="score/training value", simple_value=0)])
+        testScoreSummary = tf.Summary(value=[tf.Summary.Value(tag="score/test value", simple_value=0)])
+        explorationRateSummary = tf.Summary(value=[tf.Summary.Value(tag="exploration rate/value", simple_value=0)])
+        trainOrTestSummary = tf.Summary(value=[tf.Summary.Value(tag="process/train(1) or test(-1)", simple_value=0)])
+        stepsPerEpisodeTrainingSummary = tf.Summary(value=[tf.Summary.Value(tag="steps per episode/training value", simple_value=0)])
+        stepsPerEpisodeTestSummary = tf.Summary(value=[tf.Summary.Value(tag="steps per episode/test value", simple_value=0)])
+        train_steps_since_start = 0
+
+        # tensor board summary merge
+        merged = tf.summary.merge_all()
+
+        # file writer
+        train_writer = tf.summary.FileWriter(tensorboard_savefile, session.graph)
+
         for epoch in range(epochs):
             print("\nEpoch %d\n-------" % (epoch + 1))
             train_episodes_finished = 0
             train_scores = []
+            episodeSteps = 0
 
             print("Training...")
             game.new_episode()
             for learning_step in trange(learning_steps_per_epoch, leave=False):
+                episodeSteps += 1
                 perform_learning_step(epoch)
                 if game.is_episode_finished():
                     score = game.get_total_reward()
@@ -337,7 +342,10 @@ if __name__ == '__main__':
                     train_episodes_finished += 1
 
                     trainScoreSummary.value[0].simple_value = score
+                    stepsPerEpisodeTrainingSummary.value[0].simple_value = episodeSteps
                     train_writer.add_summary(trainScoreSummary, train_steps_since_start)
+                    train_writer.add_summary(stepsPerEpisodeTrainingSummary, train_steps_since_start)
+                    episodeSteps = 0
                 
                 trainOrTestSummary.value[0].simple_value = 1
                 train_writer.add_summary(trainOrTestSummary, train_steps_since_start)
@@ -350,12 +358,15 @@ if __name__ == '__main__':
             print("Results: mean: %.1f±%.1f," % (train_scores.mean(), train_scores.std()), \
                   "min: %.1f," % train_scores.min(), "max: %.1f," % train_scores.max())
 
+            episodeSteps = 0
+
             print("\nTesting...")
             test_episode = []
             test_scores = []
             for test_episode in trange(test_episodes_per_epoch, leave=False):
                 game.new_episode()
                 while not game.is_episode_finished():
+                    episodeSteps += 1
                     state = preprocess(game.get_state().screen_buffer)
                     best_action_index = get_best_action(state)
 
@@ -367,7 +378,10 @@ if __name__ == '__main__':
                 test_scores.append(r)
 
                 testScoreSummary.value[0].simple_value = r
+                stepsPerEpisodeTestSummary.value[0].simple_value = episodeSteps
                 train_writer.add_summary(testScoreSummary, train_steps_since_start-1)
+                train_writer.add_summary(stepsPerEpisodeTestSummary, train_steps_since_start)
+                episodeSteps = 0
 
             test_scores = np.array(test_scores)
             print("Results: mean: %.1f±%.1f," % (
